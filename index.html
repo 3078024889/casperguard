@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CasperGuard — RWA Compliance Oracle</title>
+  <style>
+    /* ── Design Tokens ────────────────────────────────────────────────────── */
+    :root {
+      --black:   #0a0a0c;
+      --surface: #111116;
+      --panel:   #18181f;
+      --border:  #26262e;
+      --muted:   #46464f;
+      --text:    #e8e8f0;
+      --subtle:  #8888a0;
+      --red:     #e8292a;      /* Casper red */
+      --red-dim: #3a1011;
+      --green:   #22c55e;
+      --yellow:  #f59e0b;
+      --orange:  #f97316;
+      --mono:    "JetBrains Mono", "Fira Code", monospace;
+      --sans:    "Inter", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--black);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,12,0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.4px;
+    }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--red);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .network-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--subtle);
+      font-family: var(--mono);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      margin-bottom: 4px;
+    }
+
+    .page-subtitle { color: var(--subtle); margin-bottom: 28px; font-size: 13px; }
+
+    /* ── Stats Row ───────────────────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .stat-label { font-size: 11px; color: var(--subtle); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+    /* ── Main Grid ───────────────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title { font-size: 13px; font-weight: 600; }
+
+    /* ── Table ───────────────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      color: var(--subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td { padding: 13px 20px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── Risk Badges ─────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 9px; border-radius: 4px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    }
+
+    .badge-low      { background: rgba(34,197,94,0.12); color: var(--green); }
+    .badge-medium   { background: rgba(245,158,11,0.12); color: var(--yellow); }
+    .badge-high     { background: rgba(249,115,22,0.12); color: var(--orange); }
+    .badge-critical { background: rgba(232,41,42,0.12);  color: var(--red); }
+
+    /* ── Score Bar ───────────────────────────────────────────────────────── */
+    .score-bar {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .bar-track {
+      flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+    }
+
+    .bar-fill { height: 100%; border-radius: 2px; }
+
+    /* ── Hash cell ───────────────────────────────────────────────────────── */
+    .hash {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--subtle);
+    }
+
+    .hash a { color: var(--subtle); text-decoration: none; }
+    .hash a:hover { color: var(--red); }
+
+    /* ── Side Panel ──────────────────────────────────────────────────────── */
+    .agent-status {
+      padding: 20px;
+    }
+
+    .agent-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .agent-row:last-child { border-bottom: none; }
+
+    .agent-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+
+    .agent-info { flex: 1; }
+    .agent-name { font-size: 13px; font-weight: 500; }
+    .agent-detail { font-size: 11px; color: var(--subtle); margin-top: 2px; font-family: var(--mono); }
+
+    .agent-time { font-size: 11px; color: var(--muted); }
+
+    /* ── Log Panel ───────────────────────────────────────────────────────── */
+    .log-panel {
+      margin-top: 20px;
+    }
+
+    .log-body {
+      padding: 16px 20px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--subtle);
+      line-height: 1.8;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .log-line { display: flex; gap: 10px; }
+    .log-time { color: var(--muted); flex-shrink: 0; }
+    .log-green { color: var(--green); }
+    .log-red   { color: var(--red); }
+    .log-yellow{ color: var(--yellow); }
+
+    /* ── Run Button ──────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 7px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: none; transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary { background: var(--red); color: #fff; }
+    .btn-ghost   { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── Reputation Ring ─────────────────────────────────────────────────── */
+    .rep-ring-wrap {
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px 0 10px;
+      flex-direction: column; gap: 6px;
+    }
+
+    .rep-ring {
+      position: relative; width: 96px; height: 96px;
+    }
+
+    .rep-ring svg { transform: rotate(-90deg); }
+
+    .rep-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+
+    .rep-pct { font-size: 22px; font-weight: 700; letter-spacing: -1px; }
+    .rep-label { font-size: 10px; color: var(--subtle); }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    CasperGuard
+  </div>
+  <div class="header-right">
+    <div class="network-badge">
+      <div class="dot"></div>
+      Casper Testnet
+    </div>
+    <button class="btn btn-primary" onclick="runAgent()">▶ Run Agent</button>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">RWA Compliance Oracle</div>
+  <div class="page-subtitle">AI agent monitoring · x402 pay-per-request data · on-chain attestations · Casper Testnet</div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Assets Monitored</div>
+      <div class="stat-value" id="stat-total">3</div>
+      <div class="stat-sub">last scan: just now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">On-Chain Attestations</div>
+      <div class="stat-value" id="stat-attestations">3</div>
+      <div class="stat-sub">Casper Testnet</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Critical Alerts</div>
+      <div class="stat-value" id="stat-critical" style="color:var(--red)">1</div>
+      <div class="stat-sub">require immediate review</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Oracle Reputation</div>
+      <div class="stat-value" id="stat-rep" style="color:var(--green)">100%</div>
+      <div class="stat-sub">on-chain score</div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid">
+
+    <!-- Left: Attestation Table -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Compliance Attestations</span>
+          <span style="font-size:11px;color:var(--subtle)" id="last-updated">Updated just now</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Risk</th>
+              <th>Score</th>
+              <th>Flags</th>
+              <th>On-Chain Hash</th>
+            </tr>
+          </thead>
+          <tbody id="attestation-table"></tbody>
+        </table>
+      </div>
+
+      <!-- Log -->
+      <div class="card log-panel">
+        <div class="card-header">
+          <span class="card-title">Agent Log</span>
+          <button class="btn btn-ghost" onclick="clearLog()" style="font-size:11px;padding:4px 10px">Clear</button>
+        </div>
+        <div class="log-body" id="agent-log"></div>
+      </div>
+    </div>
+
+    <!-- Right: Sidebar -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Reputation Ring -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Oracle Reputation</span></div>
+        <div class="rep-ring-wrap">
+          <div class="rep-ring">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="40" fill="none" stroke="var(--border)" stroke-width="8"/>
+              <circle cx="48" cy="48" r="40" fill="none" stroke="var(--green)" stroke-width="8"
+                stroke-dasharray="251.2" stroke-dashoffset="0"
+                stroke-linecap="round" id="rep-arc"/>
+            </svg>
+            <div class="rep-center">
+              <div class="rep-pct" id="rep-pct">100%</div>
+              <div class="rep-label">accuracy</div>
+            </div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:12px;color:var(--subtle)" id="rep-counts">0 correct / 0 total</div>
+          </div>
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--muted)" id="oracle-addr">
+          Agent: 0x01f4a2…8c3d (Testnet)
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Agent Activity</span></div>
+        <div class="agent-status" id="activity-list">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const REPORTS = [
+  {
+    asset_id: "RWA-001",
+    asset_type: "real_estate",
+    issuer: "Dubai Property Fund LLC",
+    jurisdiction: "UAE",
+    value_usd: 4500000,
+    risk_level: "LOW",
+    risk_score: 0.00,
+    flags: [],
+    recommendation: "Asset appears compliant. Proceed with standard monitoring.",
+    attestation_hash: "a3f9b2c1d4e5f678901234567890abcdef1234567890abcdef1234567890ab12",
+    on_chain_deploy_hash: "8b1c2d3e4f5a6789012345678901234567890abcdef1234567890abcdef123456",
+    timestamp: new Date().toISOString(),
+  },
+  {
+    asset_id: "RWA-002",
+    asset_type: "commodity",
+    issuer: "Singapore Gold Vault Pte Ltd",
+    jurisdiction: "SGP",
+    value_usd: 850000,
+    risk_level: "LOW",
+    risk_score: 0.00,
+    flags: [],
+    recommendation: "Asset appears compliant. Proceed with standard monitoring.",
+    attestation_hash: "b7e3a1f2c4d5678901234abcdef1234567890abcdef1234567890abcdef5678",
+    on_chain_deploy_hash: "9c2d3e4f5a678901234567890abcdef1234567890abcdef1234567890abcd7890",
+    timestamp: new Date().toISOString(),
+  },
+  {
+    asset_id: "RWA-003",
+    asset_type: "bond",
+    issuer: "Unknown Offshore Entity",
+    jurisdiction: "BVI",
+    value_usd: 12000000,
+    risk_level: "CRITICAL",
+    risk_score: 0.90,
+    flags: [
+      "High-risk jurisdiction: BVI",
+      "Issuer identity not verified",
+      "AML threshold exceeded: $12,000,000",
+    ],
+    recommendation: "Reject asset. Potential AML/sanctions exposure detected.",
+    attestation_hash: "f1d2c3b4a5e6789012345678901234abcdef1234567890abcdef1234567890ef",
+    on_chain_deploy_hash: "0d1e2f3a4b5c678901234567890abcdef1234567890abcdef1234567890abef12",
+    timestamp: new Date().toISOString(),
+  },
+];
+
+let logLines = [];
+let correct = 0, total = 0;
+
+// ── Risk helpers ─────────────────────────────────────────────────────────────
+function badgeClass(level) {
+  return { LOW: "badge-low", MEDIUM: "badge-medium", HIGH: "badge-high", CRITICAL: "badge-critical" }[level] || "";
+}
+
+function barColor(level) {
+  return { LOW: "var(--green)", MEDIUM: "var(--yellow)", HIGH: "var(--orange)", CRITICAL: "var(--red)" }[level] || "var(--muted)";
+}
+
+function shortHash(h) { return h ? h.slice(0, 8) + "…" + h.slice(-6) : "—"; }
+
+// ── Render table ─────────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById("attestation-table");
+  tbody.innerHTML = REPORTS.map(r => {
+    const pct = (r.risk_score * 100).toFixed(0);
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600">${r.asset_id}</div>
+          <div style="font-size:11px;color:var(--subtle)">${r.asset_type} · ${r.jurisdiction}</div>
+        </td>
+        <td><span class="badge ${badgeClass(r.risk_level)}">${r.risk_level}</span></td>
+        <td>
+          <div class="score-bar">
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${Math.max(pct,3)}%;background:${barColor(r.risk_level)}"></div>
+            </div>
+            <span style="font-size:11px;font-family:var(--mono);width:30px;text-align:right">${pct}%</span>
+          </div>
+        </td>
+        <td style="max-width:180px">
+          ${r.flags.length
+            ? r.flags.map(f => `<div style="font-size:11px;color:var(--orange)">⚠ ${f}</div>`).join("")
+            : '<span style="color:var(--green);font-size:11px">✓ None</span>'}
+        </td>
+        <td>
+          <div class="hash">
+            <a href="https://testnet.cspr.live/deploy/${r.on_chain_deploy_hash}" target="_blank" title="${r.on_chain_deploy_hash}">
+              ${shortHash(r.on_chain_deploy_hash)} ↗
+            </a>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+}
+
+// ── Render activity ───────────────────────────────────────────────────────────
+function renderActivity() {
+  const icons = { LOW: "✅", MEDIUM: "🟡", HIGH: "🟠", CRITICAL: "🔴" };
+  const list = document.getElementById("activity-list");
+  list.innerHTML = REPORTS.map(r => `
+    <div class="agent-row">
+      <div class="agent-icon">${icons[r.risk_level]}</div>
+      <div class="agent-info">
+        <div class="agent-name">${r.asset_id} — ${r.risk_level}</div>
+        <div class="agent-detail">${shortHash(r.attestation_hash)}</div>
+      </div>
+      <div class="agent-time">just now</div>
+    </div>`).join("");
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const critical = REPORTS.filter(r => r.risk_level === "CRITICAL").length;
+  document.getElementById("stat-total").textContent = REPORTS.length;
+  document.getElementById("stat-attestations").textContent = REPORTS.length;
+  document.getElementById("stat-critical").textContent = critical;
+}
+
+// ── Reputation ring ───────────────────────────────────────────────────────────
+function updateRep(c, t) {
+  correct = c; total = t;
+  const pct = t === 0 ? 100 : Math.round((c / t) * 100);
+  const circumference = 2 * Math.PI * 40;
+  const offset = circumference * (1 - pct / 100);
+  document.getElementById("rep-arc").style.strokeDashoffset = offset;
+  document.getElementById("rep-pct").textContent = pct + "%";
+  document.getElementById("stat-rep").textContent = pct + "%";
+  document.getElementById("rep-counts").textContent = `${c} correct / ${t} total`;
+}
+
+// ── Agent log ─────────────────────────────────────────────────────────────────
+function addLog(msg, type = "") {
+  const now = new Date().toLocaleTimeString("en", { hour12: false });
+  logLines.push({ time: now, msg, type });
+  if (logLines.length > 50) logLines.shift();
+  const el = document.getElementById("agent-log");
+  el.innerHTML = logLines.map(l =>
+    `<div class="log-line"><span class="log-time">${l.time}</span><span class="log-${l.type||'default'}">${l.msg}</span></div>`
+  ).join("");
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog() { logLines = []; document.getElementById("agent-log").innerHTML = ""; }
+
+// ── Run Agent simulation ───────────────────────────────────────────────────────
+function runAgent() {
+  addLog("Agent started — scanning RWA portfolio…");
+
+  const delays = [300, 700, 1200, 1800, 2200, 2600, 3100, 3500, 3900, 4400, 4900, 5200];
+  const steps = [
+    ["[x402] Requesting data for RWA-001 via x402 pay-per-request…", ""],
+    ["[x402] ✓ RWA-001 data received — 0.001 CSPR paid", "green"],
+    ["[AI]   Assessing RWA-001… risk score: 0.00% → LOW ✓", "green"],
+    ["[Casper] Attestation published → Testnet block #4821033", "green"],
+    ["[x402] Requesting data for RWA-002…", ""],
+    ["[x402] ✓ RWA-002 data received", "green"],
+    ["[AI]   Assessing RWA-002… risk score: 0.00% → LOW ✓", "green"],
+    ["[Casper] Attestation published → Testnet block #4821034", "green"],
+    ["[x402] Requesting data for RWA-003…", ""],
+    ["[x402] ✓ RWA-003 data received", "green"],
+    ["[AI]   Assessing RWA-003… HIGH-RISK JURISDICTION · AML BREACH", "red"],
+    ["[Casper] CRITICAL attestation published → Testnet block #4821035 🚨", "red"],
+  ];
+
+  steps.forEach(([msg, type], i) => {
+    setTimeout(() => {
+      addLog(msg, type);
+      if (i === steps.length - 1) {
+        addLog("✅ Scan complete — 3 attestations on-chain", "green");
+        updateRep(2, 3);
+        document.getElementById("last-updated").textContent = "Updated " + new Date().toLocaleTimeString();
+      }
+    }, delays[i]);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderTable();
+renderActivity();
+updateStats();
+updateRep(3, 3);
+addLog("CasperGuard Agent initialized · Casper Testnet", "green");
+addLog("MCP Server connected: mcp.testnet.cspr.cloud", "green");
+addLog("x402 Facilitator ready: x402-facilitator.cspr.cloud", "green");
+addLog("ComplianceOracle contract loaded", "green");
+</script>
+</body>
+</html>
