@@ -87,8 +87,33 @@ let sdk, activePublicKeyHex = null;
 
 async function loadSdk(){
   log('Loading casper-js-sdk from esm.sh (this can take a few seconds the first time)...');
-  sdk = await import('https://esm.sh/casper-js-sdk@5?bundle');
-  log('SDK loaded. Exported keys: ' + Object.keys(sdk).slice(0,40).join(', '));
+  let mod = await import('https://esm.sh/casper-js-sdk@5?bundle');
+  // esm.sh sometimes wraps CJS packages under a single "default" export
+  // instead of exposing named exports directly. Detect and unwrap that case.
+  if (!mod.Args && mod.default && mod.default.Args) {
+    log('Module was wrapped under default export — unwrapping mod.default');
+    mod = mod.default;
+  }
+  sdk = mod;
+  let keys = Object.keys(sdk);
+  log('SDK loaded. Exported keys (' + keys.length + '): ' + keys.slice(0,60).join(', '));
+
+  if (!sdk.Args || !sdk.Deploy || !sdk.CLValue) {
+    log('⚠️ Expected exports still missing — retrying with an alternate esm.sh build target...');
+    try {
+      let mod2 = await import('https://esm.sh/casper-js-sdk@5?target=es2022');
+      if (!mod2.Args && mod2.default && mod2.default.Args) mod2 = mod2.default;
+      if (mod2.Args && mod2.Deploy && mod2.CLValue) {
+        sdk = mod2;
+        keys = Object.keys(sdk);
+        log('✅ Alternate build worked. Exported keys (' + keys.length + '): ' + keys.slice(0,60).join(', '));
+      } else {
+        log('⚠️ Alternate build also incomplete. Click "Print SDK diagnostics" and screenshot the full key list so this can be fixed.');
+      }
+    } catch (e2) {
+      log('Alternate load attempt failed: ' + (e2?.message || e2));
+    }
+  }
   return sdk;
 }
 
