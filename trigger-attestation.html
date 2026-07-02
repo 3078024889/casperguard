@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CasperGuard — Submit Live Attestation</title>
+<style>
+  :root{--bg:#0b0d12;--panel:#131722;--border:#232838;--red:#e0384a;--text:#d7dce5;--muted:#6b7385;--green:#33d17a;--gold:#e0b84a;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px 16px 80px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+  input,select{width:100%;background:#0d1017;border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:6px;font-size:14px;font-family:ui-monospace,monospace;}
+  button{background:var(--red);color:#fff;border:none;padding:12px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px;width:100%;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  button.secondary{background:#232838;}
+  .status{font-family:ui-monospace,monospace;font-size:12px;line-height:1.7;background:#0d1017;border:1px solid var(--border);border-radius:6px;padding:14px;margin-top:16px;white-space:pre-wrap;word-break:break-all;max-height:340px;overflow-y:auto;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .pill{font-size:11px;padding:4px 10px;border-radius:100px;border:1px solid var(--border);color:var(--muted);}
+  .pill.ok{color:var(--green);border-color:var(--green);}
+  .pill.err{color:var(--red);border-color:var(--red);}
+  a{color:var(--gold);}
+  .hash{font-size:11px;color:var(--muted);word-break:break-all;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡️ CasperGuard — Live Attestation Trigger</h1>
+  <div class="sub">Calls <code>record_attestation</code> on the deployed ComplianceOracle contract, signed by your Casper Wallet. This produces a real, verifiable transaction on Casper Testnet.</div>
+
+  <div class="card">
+    <div class="row">
+      <span class="pill" id="wallet-pill">Wallet: not connected</span>
+      <span class="pill" id="rpc-pill">RPC: not tested</span>
+    </div>
+    <button id="btn-connect">1. Connect Casper Wallet</button>
+  </div>
+
+  <div class="card">
+    <label>Asset ID</label>
+    <input id="asset_id" value="RWA-001">
+    <label>Risk Level</label>
+    <select id="risk_level">
+      <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
+    </select>
+    <label>Attestation Hash (SHA-256 of off-chain report — demo value below)</label>
+    <input id="attestation_hash" value="a3f9b2c1d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcd">
+    <label>Timestamp (unix seconds, auto-filled)</label>
+    <input id="timestamp" readonly>
+    <label>Contract Hash</label>
+    <input id="contract_hash" value="d37b0b7f234789379432d30de67bd54587f84e42969e87f5fa44e49e395a0987">
+    <label>Payment (motes — 5 CSPR default, increase if it fails with "insufficient payment")</label>
+    <input id="payment" value="5000000000">
+    <label>RPC Node</label>
+    <select id="rpc_url">
+      <option value="https://rpc.testnet.casperlabs.io/rpc">https://rpc.testnet.casperlabs.io/rpc (public, no key)</option>
+      <option value="https://node.testnet.cspr.cloud/rpc">https://node.testnet.cspr.cloud/rpc (needs CSPR.cloud key below)</option>
+    </select>
+    <label>CSPR.cloud API key (only needed if you picked that RPC above)</label>
+    <input id="cspr_cloud_key" placeholder="optional">
+    <button id="btn-submit" disabled>2. Sign &amp; Submit Attestation</button>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <strong style="font-size:13px">Log</strong>
+      <button class="secondary" style="width:auto;margin:0;padding:6px 12px;font-size:12px" id="btn-diag">Print SDK diagnostics</button>
+    </div>
+    <div class="status" id="log">Waiting...</div>
+  </div>
+</div>
+
+<script type="module">
+const logEl = document.getElementById('log');
+function log(msg){
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent += `\n[${t}] ${msg}`;
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log(msg);
+}
+document.getElementById('timestamp').value = Math.floor(Date.now()/1000);
+
+let sdk, activePublicKeyHex = null;
+
+async function loadSdk(){
+  log('Loading casper-js-sdk from esm.sh (this can take a few seconds the first time)...');
+  sdk = await import('https://esm.sh/casper-js-sdk@5?bundle');
+  log('SDK loaded. Exported keys: ' + Object.keys(sdk).slice(0,40).join(', '));
+  return sdk;
+}
+
+document.getElementById('btn-diag').addEventListener('click', async () => {
+  try{
+    if(!sdk) await loadSdk();
+    log('--- CLValue keys ---\n' + Object.keys(sdk.CLValue || {}).join(', '));
+    log('--- Deploy keys ---\n' + Object.keys(sdk.Deploy || {}).join(', '));
+    log('--- Deploy.prototype keys ---\n' + Object.getOwnPropertyNames(sdk.Deploy?.prototype || {}).join(', '));
+  }catch(e){ log('Diagnostic error: ' + e.message); }
+});
+
+document.getElementById('btn-connect').addEventListener('click', async () => {
+  const pill = document.getElementById('wallet-pill');
+  try{
+    if (!window.CasperWalletProvider) {
+      log('❌ Casper Wallet extension not detected. Install it and refresh this page.');
+      pill.textContent = 'Wallet: not found'; pill.className='pill err';
+      return;
+    }
+    const provider = window.CasperWalletProvider();
+    window.__cwProvider = provider;
+    const connected = await provider.requestConnection();
+    if (!connected) { log('Connection was rejected or cancelled.'); return; }
+    activePublicKeyHex = await provider.getActivePublicKey();
+    window.__activePublicKeyHex = activePublicKeyHex;
+    log('✅ Connected: ' + activePublicKeyHex);
+    pill.textContent = 'Wallet: ' + activePublicKeyHex.slice(0,10) + '...';
+    pill.className = 'pill ok';
+    document.getElementById('btn-submit').disabled = false;
+    await loadSdk();
+  }catch(e){
+    log('❌ Connect error: ' + (e.message || e));
+    pill.textContent = 'Wallet: error'; pill.className='pill err';
+  }
+});
+
+document.getElementById('btn-submit').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  try{
+    if (!sdk) await loadSdk();
+    const { PublicKey, Args, DeployHeader, ExecutableDeployItem, Deploy, DEFAULT_DEPLOY_TTL, StoredContractByHash, ContractHash, CLValue, HttpHandler, RpcClient } = sdk;
+
+    const assetId = document.getElementById('asset_id').value.trim();
+    const riskLevel = document.getElementById('risk_level').value;
+    const attestationHash = document.getElementById('attestation_hash').value.trim();
+    const timestamp = BigInt(document.getElementById('timestamp').value);
+    const contractHashHex = document.getElementById('contract_hash').value.trim();
+    const paymentAmount = document.getElementById('payment').value.trim();
+    const rpcUrl = document.getElementById('rpc_url').value;
+    const csprCloudKey = document.getElementById('cspr_cloud_key').value.trim();
+
+    log('Building CLValue args...');
+    const mkStr = (s) => CLValue.newCLString ? CLValue.newCLString(s) : CLValue.newCLValueString(s);
+    const mkU64 = (n) => {
+      if (CLValue.newCLUInt64) return CLValue.newCLUInt64(n);
+      if (CLValue.newCLU64) return CLValue.newCLU64(n);
+      if (CLValue.newCLUint64) return CLValue.newCLUint64(n);
+      throw new Error('No U64 constructor found on CLValue — click "Print SDK diagnostics" and send Claude the CLValue keys list.');
+    };
+
+    const args = Args.fromMap({
+      asset_id: mkStr(assetId),
+      risk_level: mkStr(riskLevel),
+      attestation_hash: mkStr(attestationHash),
+      timestamp: mkU64(timestamp)
+    });
+
+    log('Building deploy header for sender ' + activePublicKeyHex + ' ...');
+    const senderPublicKey = PublicKey.fromHex(activePublicKeyHex);
+    const deployHeader = DeployHeader.default();
+    deployHeader.account = senderPublicKey;
+    deployHeader.chainName = 'casper-test';
+    deployHeader.ttl = DEFAULT_DEPLOY_TTL;
+    deployHeader.gasPrice = 1;
+
+    const session = new ExecutableDeployItem();
+    session.storedContractByHash = new StoredContractByHash(
+      ContractHash.newContract(contractHashHex),
+      'record_attestation',
+      args
+    );
+    const payment = ExecutableDeployItem.standardPayment(paymentAmount);
+    const deploy = Deploy.makeDeploy(deployHeader, payment, session);
+    log('✅ Unsigned deploy built. Deploy hash (pre-sign ref): ' + JSON.stringify(deploy.hash || deploy.deployHash || '(no hash field found yet)'));
+
+    log('Serializing deploy to JSON for wallet signing...');
+    let deployJson;
+    if (typeof deploy.toJSON === 'function') deployJson = deploy.toJSON();
+    else if (sdk.Deploy && typeof sdk.Deploy.toJSON === 'function') deployJson = sdk.Deploy.toJSON(deploy);
+    else throw new Error('Could not find a way to serialize the Deploy to JSON. Click "Print SDK diagnostics" and send Claude the Deploy keys.');
+
+    log('Requesting signature from Casper Wallet — check the extension popup...');
+    const provider = window.__cwProvider || window.CasperWalletProvider();
+    const res = await provider.sign(JSON.stringify(deployJson), activePublicKeyHex);
+
+    if (res.cancelled) { log('❌ Signature was cancelled in the wallet.'); btn.disabled = false; return; }
+    log('✅ Signature received. Attaching to deploy...');
+
+    if (typeof deploy.setSignature === 'function') {
+      deploy.setSignature(res.signature, senderPublicKey);
+    } else if (typeof deploy.addApproval === 'function') {
+      deploy.addApproval(senderPublicKey, res.signatureHex || res.signature);
+    } else {
+      throw new Error('Could not find setSignature/addApproval on Deploy. Click "Print SDK diagnostics" and send Claude the Deploy.prototype keys.');
+    }
+
+    log('Submitting to RPC node: ' + rpcUrl + ' ...');
+    const handler = new HttpHandler(rpcUrl);
+    if (csprCloudKey && handler.setCustomHeaders) handler.setCustomHeaders({ Authorization: csprCloudKey });
+    const rpcClient = new RpcClient(handler);
+    const result = await rpcClient.putDeploy(deploy);
+
+    const deployHash = result.deployHash || result.deploy_hash || JSON.stringify(result);
+    log('🎉 SUCCESS. Deploy hash: ' + deployHash);
+    log('View it: https://testnet.cspr.live/deploy/' + deployHash);
+    document.getElementById('rpc-pill').textContent = 'RPC: submitted ✓';
+    document.getElementById('rpc-pill').className = 'pill ok';
+  }catch(e){
+    log('❌ Error: ' + (e?.message || e));
+    if (e?.stack) log(e.stack);
+    log('Screenshot this whole log box and send it back — this tells us exactly which line to fix.');
+  }finally{
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
