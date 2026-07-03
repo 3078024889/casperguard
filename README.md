@@ -19,6 +19,22 @@ CasperGuard is an autonomous AI agent that monitors Real-World Asset (RWA) compl
 
 ---
 
+## ✅ Verified On-Chain (Testnet)
+
+CasperGuard is not just deployed — it has produced a real, verifiable transaction on Casper Testnet.
+
+| | |
+|---|---|
+| **Contract Hash** | `d37b0b7f234789379432d30de67bd54587f84e42969e87f5fa44e49e395a0987` |
+| **Contract Package** | `464cbf123ad8a503b2c6e96dcdad8a9a421dcb953ed08514ec77322e49fc390f` |
+| **Live Attestation Tx** | [`7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a`](https://testnet.cspr.live/deploy/7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a) |
+| **Action** | `record_attestation` — Status: ✅ Success |
+| **Live Trigger Tool** | [dashboard-trigger.html](https://3078024889.github.io/casperguard/dashboard-trigger.html) — connect your own Casper Wallet and submit a live attestation |
+
+This wasn't just deployed and left idle — it has been called and produced a confirmed on-chain transaction, verifiable by anyone on testnet.cspr.live.
+
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -161,8 +177,10 @@ The contract tracks each oracle's accuracy rate on-chain, creating a verifiable 
 
 ## 🌐 Live Demo
 
-- **Dashboard:** Open `frontend/index.html` locally
+- **Dashboard:** [casperguard-dashboard.html](https://3078024889.github.io/casperguard/casperguard-dashboard.html) — hosted live, no install needed
+- **Live Attestation Trigger:** [dashboard-trigger.html](https://3078024889.github.io/casperguard/dashboard-trigger.html) — connect Casper Wallet and submit a real on-chain attestation yourself
 - **Testnet Explorer:** [testnet.cspr.live](https://testnet.cspr.live)
+- **Verified Transaction:** [7f317f2d...1831a](https://testnet.cspr.live/deploy/7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a)
 - **Demo Video:** [YouTube link]
 
 ---
@@ -194,7 +212,7 @@ The contract tracks each oracle's accuracy rate on-chain, creating a verifiable 
 
 - [x] MVP agent with x402 data fetching
 - [x] AI compliance scoring engine
-- [x] On-chain attestation via Odra contract
+- [x] On-chain attestation via Odra contract — **confirmed live on testnet** ([tx](https://testnet.cspr.live/deploy/7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a))
 - [x] Web dashboard
 - [ ] Real x402 endpoint integration (live data providers)
 - [ ] Multi-agent swarm (Risk Agent + Treasury Agent + Legal Agent)

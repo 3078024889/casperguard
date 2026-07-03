@@ -134,11 +134,35 @@ providing a verifiable compliance layer for Real-World Asset (RWA) DeFi integrat
 
 
 ## ═══════════════════════════════════════
+## 【链上实证 / ON-CHAIN PROOF】
+## ═══════════════════════════════════════
+
+合约哈希：d37b0b7f234789379432d30de67bd54587f84e42969e87f5fa44e49e395a0987
+合约包哈希：464cbf123ad8a503b2c6e96dcdad8a9a421dcb953ed08514ec77322e49fc390f
+查看合约：https://testnet.cspr.live/contract/d37b0b7f234789379432d30de67bd54587f84e42969e87f5fa44e49e395a0987
+
+真实调用交易（record_attestation）：
+7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a
+查看交易：https://testnet.cspr.live/deploy/7f317f2d62ff3551f2751800816fcb20837befb50332b90fabb7dacfb9d1831a
+状态：✅ Success
+
+在线触发工具（任何人都可以连接自己的 Casper Wallet 发起一次真实调用）：
+https://3078024889.github.io/casperguard/dashboard-trigger.html
+
+
+## ═══════════════════════════════════════
 ## 【GitHub 链接】
 ## ═══════════════════════════════════════
 
 https://github.com/3078024889/casperguard
-（上传所有文件后填写）
+
+
+## ═══════════════════════════════════════
+## 【项目网站 / 在线演示】
+## ═══════════════════════════════════════
+
+https://3078024889.github.io/casperguard/
+https://3078024889.github.io/casperguard/dashboard-trigger.html （可发起真实链上调用）
 
 
 ## ═══════════════════════════════════════
